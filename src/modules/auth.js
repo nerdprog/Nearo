@@ -19,6 +19,35 @@ export function onAuthChange(callback) {
 }
 
 /**
+ * Map Firebase error codes to user-friendly messages
+ */
+function mapAuthError(error) {
+  const code = error.code;
+  switch (code) {
+    case 'auth/invalid-email':
+      return 'Invalid email address.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled.';
+    case 'auth/user-not-found':
+      return 'Account not found.';
+    case 'auth/wrong-password':
+      return 'Incorrect password.';
+    case 'auth/email-already-in-use':
+      return 'Email already in use.';
+    case 'auth/weak-password':
+      return 'Password is too weak.';
+    case 'auth/popup-closed-by-user':
+      return 'Sign-in window was closed.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection.';
+    case 'auth/invalid-credential':
+      return 'Incorrect email or password.';
+    default:
+      return error.message || 'An unexpected error occurred.';
+  }
+}
+
+/**
  * Sign up a new user
  */
 export async function signUp(email, password, username) {
@@ -34,7 +63,7 @@ export async function signUp(email, password, username) {
     return { user, error: null };
   } catch (error) {
     console.error("Sign up error:", error);
-    return { user: null, error: error.message };
+    return { user: null, error: mapAuthError(error) };
   }
 }
 
@@ -47,7 +76,7 @@ export async function signIn(email, password) {
     return { user: userCredential.user, error: null };
   } catch (error) {
     console.error("Sign in error:", error);
-    return { user: null, error: error.message };
+    return { user: null, error: mapAuthError(error) };
   }
 }
 
@@ -60,7 +89,7 @@ export async function signOut() {
     return { error: null };
   } catch (error) {
     console.error("Sign out error:", error);
-    return { error: error.message };
+    return { error: mapAuthError(error) };
   }
 }
 
@@ -82,7 +111,7 @@ export async function deleteAccount() {
     return { error: null };
   } catch (error) {
     console.error("Delete account error:", error);
-    return { error: error.message };
+    return { error: mapAuthError(error) };
   }
 }
 
@@ -96,6 +125,6 @@ export async function signInWithGoogle() {
     return { user: userCredential.user, error: null };
   } catch (error) {
     console.error("Google sign in error:", error);
-    return { user: null, error: error.message };
+    return { user: null, error: mapAuthError(error) };
   }
 }

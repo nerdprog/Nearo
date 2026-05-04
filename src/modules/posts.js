@@ -94,7 +94,7 @@ export async function createPost(title, content, zoneId) {
     .from('posts')
     .insert([{
       user_id: user.uid,
-      username: user.displayName,
+      username: user.displayName || 'Anonymous',
       zone_id: zoneId,
       title,
       content
