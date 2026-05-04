@@ -1,0 +1,73 @@
+# Enabling Image Upload in Nearo
+
+Currently, image uploading is disabled. When you are ready to enable it, follow these steps:
+
+## 1. Supabase Storage Setup
+
+1. In your Supabase Dashboard, go to **Storage**.
+2. Create a new bucket named `post-images`. Make sure to set it as a **Public** bucket.
+3. Under **Policies**, create policies for `post-images`:
+   - Select: Anyone can read (so images are visible).
+   - Insert: Authenticated users can insert.
+
+## 2. Supabase SQL Update
+
+Add an `image_url` column to the `posts` table. Run this in the SQL Editor:
+
+```sql
+ALTER TABLE posts ADD COLUMN image_url TEXT;
+```
+
+## 3. Code Updates
+
+### `src/modules/posts.js`
+
+1. Update the `createPost` function signature to accept an `imageFile`:
+   `export async function createPost(title, content, zoneId, imageFile = null)`
+   
+2. If `imageFile` exists, upload it to Supabase storage before inserting the post:
+
+```javascript
+let imageUrl = null;
+if (imageFile) {
+  const fileExt = imageFile.name.split('.').pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from('post-images')
+    .upload(`public/${fileName}`, imageFile);
+    
+  if (uploadError) throw uploadError;
+  
+  const { data: publicUrlData } = supabase.storage
+    .from('post-images')
+    .getPublicUrl(`public/${fileName}`);
+    
+  imageUrl = publicUrlData.publicUrl;
+}
+
+// Then include imageUrl in the post insertion
+const { data, error } = await supabase
+  .from('posts')
+  .insert([{
+    user_id: user.uid,
+    username: user.displayName,
+    zone_id: zoneId,
+    title,
+    content,
+    image_url: imageUrl
+  }]);
+```
+
+### `src/components/create-post.js`
+
+1. Remove the "disabled" attribute from the file input area.
+2. Remove the "Coming Soon" badge.
+3. Add an event listener to handle file selection and preview the image.
+4. Pass the selected file to `createPost`.
+
+### `src/components/post-card.js`
+
+1. When rendering the post, check if `post.image_url` exists.
+2. If it does, render an `<img>` tag with `src="${post.image_url}"` below the content.
+3. Ensure the image has `max-width: 100%` and `border-radius: var(--radius-md)` in `style.css`.
