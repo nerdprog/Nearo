@@ -72,7 +72,7 @@ export async function getUserPosts() {
 /**
  * Create a new post
  */
-export async function createPost(title, content, zoneId) {
+export async function createPost(title, content, zoneId, lat = null, lng = null) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
   
@@ -96,6 +96,8 @@ export async function createPost(title, content, zoneId) {
       user_id: user.uid,
       username: user.displayName || 'Anonymous',
       zone_id: zoneId,
+      lat,
+      lng,
       title,
       content
     }])

@@ -3,6 +3,8 @@ class AppState {
     this.user = null; // Firebase user
     this.zoneId = null; // Current grid zone
     this.nearbyZones = [];
+    this.lat = null;
+    this.lng = null;
     this.posts = []; // Current view's posts
     this.theme = localStorage.getItem('theme') || 'light';
     
@@ -27,9 +29,11 @@ class AppState {
   }
 
   // Update location state
-  setLocation(zoneId, nearbyZones) {
+  setLocation(zoneId, nearbyZones, lat = null, lng = null) {
     this.zoneId = zoneId;
     this.nearbyZones = nearbyZones;
+    this.lat = lat;
+    this.lng = lng;
     this.notify();
   }
 

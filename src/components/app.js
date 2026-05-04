@@ -1,6 +1,6 @@
 import { state } from '../modules/state.js';
 import { onAuthChange, signIn, signUp, signOut, deleteAccount, signInWithGoogle } from '../modules/auth.js';
-import { updateLocation } from '../modules/geo.js';
+import { updateLocation, calculateDistance } from '../modules/geo.js';
 import { fetchPosts, createPost, getUserPosts, deletePost as removePost, searchPosts } from '../modules/posts.js';
 import { votePost, getUserVotes } from '../modules/votes.js';
 import { reportPost, getReportedPosts } from '../modules/reports.js';
@@ -116,7 +116,7 @@ export function initApp() {
         const modal = createPostModal(
           async (title, content, img) => {
             try {
-              await withRateLimit('post', () => createPost(title, content, state.zoneId))();
+              await withRateLimit('post', () => createPost(title, content, state.zoneId, state.lat, state.lng))();
               await updateStreakOnPost();
               showToast('Posted to zone.', 'success');
               document.body.removeChild(modal);
@@ -144,8 +144,15 @@ export function initApp() {
     try {
       const posts = await fetchPosts(state.nearbyZones, currentSort);
       
+      // Filter by strict 3km radius
+      const filteredPosts = posts.filter(post => {
+        if (!post.lat || !post.lng) return false; 
+        const dist = calculateDistance(state.lat, state.lng, post.lat, post.lng);
+        return dist <= 3;
+      });
+      
       // Fetch user specific data for these posts
-      const postIds = posts.map(p => p.id);
+      const postIds = filteredPosts.map(p => p.id);
       const [votes, reports] = await Promise.all([
         getUserVotes(postIds),
         getReportedPosts(postIds)
@@ -156,7 +163,7 @@ export function initApp() {
       
       state.userVotes = votesMap;
       state.userReports = new Set(reports);
-      state.setPosts(posts);
+      state.setPosts(filteredPosts);
       
     } catch (e) {
       showToast("Error loading posts", 'error');
@@ -170,7 +177,11 @@ export function initApp() {
     }
     try {
       const posts = await searchPosts(query, state.nearbyZones);
-      state.setPosts(posts);
+      const filteredPosts = posts.filter(post => {
+        if (!post.lat || !post.lng) return false;
+        return calculateDistance(state.lat, state.lng, post.lat, post.lng) <= 3;
+      });
+      state.setPosts(filteredPosts);
     } catch (e) {
       showToast("Search failed", 'error');
     }

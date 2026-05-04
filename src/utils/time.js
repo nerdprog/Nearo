@@ -17,9 +17,9 @@ export function timeAgo(dateString) {
 export function getResetCountdown() {
   const now = new Date();
   
-  // Calculate next UTC midnight
+  // Calculate next local midnight
   const nextMidnight = new Date();
-  nextMidnight.setUTCHours(24, 0, 0, 0);
+  nextMidnight.setHours(24, 0, 0, 0);
   
   const diffMs = nextMidnight - now;
   const hours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -32,8 +32,8 @@ export function isToday(dateString) {
   const date = new Date(dateString);
   const now = new Date();
   
-  // Assuming reset at UTC midnight
-  return date.getUTCFullYear() === now.getUTCFullYear() &&
-         date.getUTCMonth() === now.getUTCMonth() &&
-         date.getUTCDate() === now.getUTCDate();
+  // Use local time for reset
+  return date.getFullYear() === now.getFullYear() &&
+         date.getMonth() === now.getMonth() &&
+         date.getDate() === now.getDate();
 }
