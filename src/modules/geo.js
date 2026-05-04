@@ -1,4 +1,4 @@
-const GRID_SIZE = 0.03; // ~3.3km grid cells
+const GRID_SIZE = 0.012; // 1.3km Grid Cells
 
 /**
  * Request user's current location from the browser
@@ -58,16 +58,16 @@ export function getZoneId(lat, lng) {
 export function getNearbyZones(lat, lng) {
   const centerZoneX = Math.floor(lng / GRID_SIZE);
   const centerZoneY = Math.floor(lat / GRID_SIZE);
-  
+
   const zones = [];
-  
+
   // Generate 3x3 grid around center
   for (let x = -1; x <= 1; x++) {
     for (let y = -1; y <= 1; y++) {
       zones.push(`${centerZoneX + x}_${centerZoneY + y}`);
     }
   }
-  
+
   return zones;
 }
 
@@ -79,7 +79,7 @@ export async function updateLocation(stateManager) {
     const { lat, lng } = await requestLocation();
     const zoneId = getZoneId(lat, lng);
     const nearbyZones = getNearbyZones(lat, lng);
-    
+
     stateManager.setLocation(zoneId, nearbyZones, lat, lng);
     return true;
   } catch (error) {
@@ -94,12 +94,12 @@ export async function updateLocation(stateManager) {
 export function calculateDistance(lat1, lng1, lat2, lng2) {
   if (!lat1 || !lng1 || !lat2 || !lng2) return 0;
   const R = 6371; // Radius of the earth in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);  
-  const dLng = (lng2 - lng1) * (Math.PI / 180); 
-  const a = 
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLng = (lng2 - lng1) * (Math.PI / 180);
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
-    Math.sin(dLng / 2) * Math.sin(dLng / 2); 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in km
 }
