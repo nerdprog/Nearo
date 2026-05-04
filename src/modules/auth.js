@@ -42,6 +42,8 @@ function mapAuthError(error) {
       return 'Network error. Please check your connection.';
     case 'auth/invalid-credential':
       return 'Incorrect email or password.';
+    case 'auth/requires-recent-login':
+      return 'Please log out and log back in to verify your identity before deleting your account.';
     default:
       return error.message || 'An unexpected error occurred.';
   }
