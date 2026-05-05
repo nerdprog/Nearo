@@ -132,41 +132,57 @@ export async function createPost(title, content, zoneId, lat = null, lng = null,
   }
 
   let imageUrl = null;
+  let imagePath = null;
   if (imageFile) {
     const fileExt = imageFile.name.split('.').pop();
     const fileName = `${user.uid}_${Date.now()}.${fileExt}`;
+    imagePath = fileName;
     const { error: uploadError } = await supabase.storage
       .from('post_images')
-      .upload(fileName, imageFile);
+      .upload(imagePath, imageFile);
       
     if (uploadError) throw new Error("Image upload failed: " + uploadError.message);
     
     const { data: publicUrlData } = supabase.storage
       .from('post_images')
-      .getPublicUrl(fileName);
+      .getPublicUrl(imagePath);
       
     imageUrl = publicUrlData.publicUrl;
   }
 
   const pfpUrl = user.photoURL || '/assets/pfp/placeholder.svg';
 
-  const { data, error } = await supabase
-    .from('posts')
-    .insert([{
-      user_id: user.uid,
-      username: user.displayName || 'Anonymous',
-      pfp_url: pfpUrl,
-      zone_id: zoneId,
-      lat,
-      lng,
-      title,
-      content,
-      image_url: imageUrl
-    }])
-    .select();
+  const postPayload = {
+    user_id: user.uid,
+    username: user.displayName || 'Anonymous',
+    pfp_url: pfpUrl,
+    zone_id: zoneId,
+    lat,
+    lng,
+    title,
+    content,
+    image_url: imageUrl,
+    image_path: imagePath
+  };
+
+  let data;
+  let error;
+  try {
+    const result = await insertPost(postPayload);
+    data = result.data;
+    error = result.error;
+  } catch (insertError) {
+    if (imagePath) {
+      await supabase.storage.from('post_images').remove([imagePath]);
+    }
+    throw insertError;
+  }
     
   if (error) {
     console.error("Create post error:", error);
+    if (imagePath) {
+      await supabase.storage.from('post_images').remove([imagePath]);
+    }
     throw error;
   }
 
@@ -179,6 +195,13 @@ export async function createPost(title, content, zoneId, lat = null, lng = null,
  * Delete a post (own post only, enforced by RLS)
  */
 export async function deletePost(postId) {
+  const { data: post, error: fetchError } = await getPostImageInfo(postId);
+
+  if (fetchError) {
+    console.error("Fetch post before delete error:", fetchError);
+    throw fetchError;
+  }
+
   const { error } = await supabase
     .from('posts')
     .delete()
@@ -187,6 +210,18 @@ export async function deletePost(postId) {
   if (error) {
     console.error("Delete post error:", error);
     throw error;
+  }
+
+  const imagePath = getStoragePath(post);
+  if (imagePath) {
+    const { error: storageError } = await supabase.storage
+      .from('post_images')
+      .remove([imagePath]);
+
+    if (storageError) {
+      console.error("Delete post image error:", storageError);
+      throw new Error("Post deleted, but image cleanup failed: " + storageError.message);
+    }
   }
   
   return true;
@@ -229,4 +264,63 @@ async function ensureDailyStatsCount(today, previousStats, previousPostsCount, p
       has_image_uploaded: latestStats.has_image_uploaded || postedImage
     }).eq('id', latestStats.id);
   }
+}
+
+async function insertPost(postPayload) {
+  const result = await supabase
+    .from('posts')
+    .insert([postPayload])
+    .select();
+
+  if (!isMissingColumnError(result.error, 'image_path')) {
+    return result;
+  }
+
+  const legacyPayload = { ...postPayload };
+  delete legacyPayload.image_path;
+
+  return supabase
+    .from('posts')
+    .insert([legacyPayload])
+    .select();
+}
+
+async function getPostImageInfo(postId) {
+  const result = await supabase
+    .from('posts')
+    .select('image_url, image_path')
+    .eq('id', postId)
+    .single();
+
+  if (!isMissingColumnError(result.error, 'image_path')) {
+    return result;
+  }
+
+  return supabase
+    .from('posts')
+    .select('image_url')
+    .eq('id', postId)
+    .single();
+}
+
+function isMissingColumnError(error, columnName) {
+  if (!error) return false;
+  const message = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`;
+  return error.code === '42703' || message.includes(columnName);
+}
+
+function getStoragePath(post) {
+  if (!post) return null;
+  if (post.image_path) return post.image_path;
+  return getStoragePathFromPublicUrl(post.image_url);
+}
+
+function getStoragePathFromPublicUrl(imageUrl) {
+  if (!imageUrl) return null;
+
+  const marker = '/storage/v1/object/public/post_images/';
+  const markerIndex = imageUrl.indexOf(marker);
+  if (markerIndex === -1) return null;
+
+  return decodeURIComponent(imageUrl.slice(markerIndex + marker.length).split('?')[0]);
 }
