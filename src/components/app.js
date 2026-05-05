@@ -44,26 +44,64 @@ export function initApp() {
     }
 
     if (currentView === 'auth') {
-        root.appendChild(createAuthPage(
-          async (email, pwd) => {
-            const res = await withRateLimit('auth', () => signIn(email, pwd))();
-            if (res.error) showToast(res.error, 'error');
-          },
-          async (email, pwd, user, pfpUrl) => {
-            const res = await withRateLimit('auth', () => signUp(email, pwd, user, pfpUrl))();
-            if (res.error) showToast(res.error, 'error');
-            else showToast('Identity created.', 'success');
-          },
-          async () => {
-            const res = await withRateLimit('auth', () => signInWithGoogle())();
-            if (res.error) showToast(res.error, 'error');
-            else showToast('Signed in with Google.', 'success');
-          }
-        ));
+      root.innerHTML = '';
+      root.appendChild(createAuthPage(
+        async (email, pwd) => {
+          const res = await withRateLimit('auth', () => signIn(email, pwd))();
+          if (res.error) showToast(res.error, 'error');
+        },
+        async (email, pwd, user, pfpUrl) => {
+          const res = await withRateLimit('auth', () => signUp(email, pwd, user, pfpUrl))();
+          if (res.error) showToast(res.error, 'error');
+          else showToast('Identity created.', 'success');
+        },
+        async () => {
+          const res = await withRateLimit('auth', () => signInWithGoogle())();
+          if (res.error) showToast(res.error, 'error');
+          else showToast('Signed in with Google.', 'success');
+        }
+      ));
       return;
     }
 
-    // Main App Shell
+    // Persistent Shell structure
+    root.innerHTML = `
+      <div id="main-content" style="flex: 1; overflow-y: auto;"></div>
+      <div id="navbar-anchor"></div>
+    `;
+    const contentArea = document.getElementById('main-content');
+    const navAnchor = document.getElementById('navbar-anchor');
+
+    // Add Navbar immediately
+    navAnchor.appendChild(createNavbar((tab) => {
+      if (tab === 'create') {
+        const modal = createPostModal(
+          async (title, content, img) => {
+            try {
+              const pfpUrl = state.user?.photoURL || null;
+              await withRateLimit('post', () => createPost(title, content, state.zoneId, state.lat, state.lng, img, pfpUrl))();
+              await updateStreakOnPost();
+              showToast('Posted to zone.', 'success');
+              document.body.removeChild(modal);
+              if (currentView === 'feed') loadFeedData();
+              else { currentView = 'feed'; render(); }
+            } catch (e) {
+              showToast(e.message, 'error');
+              throw e;
+            }
+          },
+          () => document.body.removeChild(modal)
+        );
+        document.body.appendChild(modal);
+      } else {
+        if (currentView !== tab) {
+          currentView = tab;
+          render();
+        }
+      }
+    }));
+
+    // Main App Views
     if (currentView === 'feed') {
       const feed = createFeed(state, 
         (sort) => { currentSort = sort; loadFeedData(); },
@@ -76,22 +114,22 @@ export function initApp() {
           render();
         }
       );
-      root.appendChild(feed);
+      contentArea.appendChild(feed);
       
-      // We need to re-render posts when state changes, so we attach it to state
       state.subscribe((s) => {
         if (currentView === 'feed' && document.getElementById('posts-container')) {
            feed.renderPosts(s.posts || [], s.userVotes || {}, s.userReports || new Set());
         }
       });
       
-      // Initial load
       if (state.posts.length === 0) loadFeedData();
       else feed.renderPosts(state.posts, state.userVotes || {}, state.userReports || new Set());
     }
 
     if (currentView === 'account') {
-      root.innerHTML = `<div style="height: 100vh; display: flex; justify-content: center; align-items: center;"><div class="loader"></div></div>`;
+      const loader = document.createElement('div');
+      loader.innerHTML = `<div style="height: 50vh; display: flex; justify-content: center; align-items: center;"><div class="loader"></div></div>`;
+      contentArea.appendChild(loader);
       
       try {
         const [posts, streak] = await Promise.all([
@@ -99,8 +137,9 @@ export function initApp() {
           getStreak()
         ]);
         
-        root.innerHTML = '';
-        root.appendChild(createAccountPanel(
+        if (currentView !== 'account') return;
+        contentArea.innerHTML = '';
+        contentArea.appendChild(createAccountPanel(
           state, posts, streak,
           async () => { await signOut(); },
           async () => {
@@ -111,7 +150,7 @@ export function initApp() {
             try {
               await removePost(id);
               showToast('Post deleted', 'success');
-              render(); // Re-render account panel
+              render();
             } catch (e) {
               showToast(e.message, 'error');
             }
@@ -125,7 +164,7 @@ export function initApp() {
     }
 
     if (currentView === 'instructions') {
-      root.appendChild(createInstructionsPage(() => {
+      contentArea.appendChild(createInstructionsPage(() => {
         currentView = 'feed';
         render();
       }));
@@ -150,18 +189,14 @@ export function initApp() {
       const voteType = (state.userVotes || {})[selectedPost.id] || null;
       const reported = (state.userReports || new Set()).has(selectedPost.id);
       
-      // We pass null for onPostClick to prevent recursion
       const card = createPostCard(selectedPost, voteType, reported, handleVote, handleReport, null);
-      // Remove truncation for detail view
       const contentPara = card.querySelector('p');
       if (contentPara) {
         contentPara.textContent = selectedPost.content;
-        const readMore = contentPara.querySelector('span');
-        if (readMore) readMore.remove();
       }
       
       detailContainer.appendChild(card);
-      root.appendChild(detailContainer);
+      contentArea.appendChild(detailContainer);
       
       detailContainer.querySelector('#btn-post-back').addEventListener('click', () => {
         currentView = 'feed';
@@ -169,32 +204,16 @@ export function initApp() {
       });
     }
 
-    // Add Navbar for feed/account
-    root.appendChild(createNavbar((tab) => {
-      if (tab === 'create') {
-        const modal = createPostModal(
-          async (title, content, img) => {
-            try {
-              await withRateLimit('post', () => createPost(title, content, state.zoneId, state.lat, state.lng))();
-              await updateStreakOnPost();
-              showToast('Posted to zone.', 'success');
-              document.body.removeChild(modal);
-              if (currentView === 'feed') loadFeedData();
-            } catch (e) {
-              showToast(e.message, 'error');
-              throw e; // keep modal open if error
-            }
-          },
-          () => document.body.removeChild(modal)
-        );
-        document.body.appendChild(modal);
-      } else {
-        if (currentView !== tab) {
-          currentView = tab;
-          render();
+    // Removed duplicate navbar block as it's now handled at the shell level above
+    if (currentView === 'feed' || currentView === 'account' || currentView === 'instructions' || currentView === 'post') {
+        // The navbar is already added to navbar-anchor
+        // We just need to make sure the active state matches currentView
+        const activeItem = navAnchor.querySelector(`.nav-item[data-tab="${currentView}"]`);
+        if (activeItem) {
+          navAnchor.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+          activeItem.classList.add('active');
         }
-      }
-    }));
+    }
   };
 
   // Data loaders
