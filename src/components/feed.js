@@ -13,7 +13,7 @@ export function createFeed(state, onSort, onSearch, onVote, onReport, onPostClic
   header.innerHTML = `
     <h1 id="logo-nearo" style="font-size: 1.5rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
       <svg viewBox="0 0 64 64" width="24" height="24" fill="none"><rect width="64" height="64" rx="16" fill="var(--text-primary)"/><circle cx="32" cy="28" r="10" stroke="var(--bg-primary)" stroke-width="2.5" fill="none"/><circle cx="32" cy="28" r="3" fill="var(--accent)"/><path d="M20 48 C20 38 44 38 44 48" stroke="var(--bg-primary)" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
-      NEARO
+      NEURO
     </h1>
     <div class="mono flex items-center gap-sm" style="font-size: 0.8rem; background: var(--bg-secondary); padding: 4px 8px; border-radius: var(--radius-sm);">
       <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>

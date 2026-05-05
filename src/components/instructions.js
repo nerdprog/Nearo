@@ -8,14 +8,14 @@ export function createInstructionsPage(onBack) {
       <button id="btn-back" class="btn-icon">
         <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
       </button>
-      <h2 style="font-size: 1.5rem;">How to use Nearo</h2>
+      <h2 style="font-size: 1.5rem;">How to use Neuro</h2>
     </div>
 
     <div class="card flex-col gap-lg" style="margin-bottom: var(--spacing-xl);">
       <section>
         <h3 class="mono" style="font-size: 0.9rem; color: var(--accent); margin-bottom: var(--spacing-sm);">MISSION</h3>
         <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-secondary);">
-          Nearo is a hyper-local, anonymous social platform designed for campus life. Share thoughts, ask questions, or report issues in your immediate 3km zone.
+          Neuro is a hyper-local, anonymous social platform designed for campus life. Share thoughts, ask questions, or report issues in your immediate 3km zone.
         </p>
       </section>
 

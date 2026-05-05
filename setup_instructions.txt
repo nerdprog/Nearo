@@ -2,10 +2,30 @@
 -- NEARO SUPABASE FULL SQL SETUP INSTRUCTIONS
 -- ==========================================
 -- Run this script in the Supabase SQL Editor.
--- It creates all required tables, functions, triggers, and Row Level Security (RLS) policies.
+-- This script performs a CLEAN SLATE reset and creates everything from scratch.
+
+-- 0. CLEAN SLATE (Remove existing objects)
+-- Delete cron jobs if they exist
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+        PERFORM cron.unschedule('delete_old_posts');
+        PERFORM cron.unschedule('daily-cleanup');
+        PERFORM cron.unschedule('delete_all_posts_at_midnight');
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    -- Ignore errors if pg_cron is not enabled
+END $$;
+
+-- Drop tables (in correct order of dependency)
+DROP TABLE IF EXISTS public.reports;
+DROP TABLE IF EXISTS public.votes;
+DROP TABLE IF EXISTS public.streaks;
+DROP TABLE IF EXISTS public.user_daily_stats;
+DROP TABLE IF EXISTS public.posts;
 
 -- 1. Create POSTS table
-CREATE TABLE IF NOT EXISTS public.posts (
+CREATE TABLE public.posts (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   user_id text NOT NULL, -- Firebase UID
@@ -62,7 +82,7 @@ USING (true);
 
 
 -- 2. Create VOTES table
-CREATE TABLE IF NOT EXISTS public.votes (
+CREATE TABLE public.votes (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   user_id text NOT NULL,
@@ -84,7 +104,7 @@ WITH CHECK (true);
 
 
 -- 3. Create REPORTS table
-CREATE TABLE IF NOT EXISTS public.reports (
+CREATE TABLE public.reports (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   user_id text NOT NULL,
@@ -107,7 +127,7 @@ USING (true);
 
 
 -- 4. Create STREAKS table
-CREATE TABLE IF NOT EXISTS public.streaks (
+CREATE TABLE public.streaks (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id text UNIQUE NOT NULL,
   current_streak integer DEFAULT 0,
@@ -125,7 +145,7 @@ WITH CHECK (true);
 
 -- 5. Create USER_DAILY_STATS table (NEW)
 -- This tracks posts per day and image uploads per day to enforce limits securely.
-CREATE TABLE IF NOT EXISTS public.user_daily_stats (
+CREATE TABLE public.user_daily_stats (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id text NOT NULL,
   stat_date date NOT NULL DEFAULT CURRENT_DATE,
@@ -161,10 +181,10 @@ WITH CHECK (true);
 -- create policy "Upload Access" on storage.objects for insert with check ( bucket_id = 'post_images' );
 
 -- ==========================================
--- DAILY CLEANUP CRON JOB (Optional but recommended)
+-- DAILY CLEANUP CRON JOB
 -- ==========================================
--- Automatically delete posts older than 24 hours
+-- Wipe ALL posts every night at 12:00 AM sharp
 -- Requires pg_cron extension
-SELECT cron.schedule('delete_old_posts', '0 0 * * *', $$
-DELETE FROM public.posts WHERE created_at < NOW() - INTERVAL '24 hours';
+SELECT cron.schedule('delete_all_posts_at_midnight', '0 0 * * *', $$
+DELETE FROM public.posts;
 $$);
