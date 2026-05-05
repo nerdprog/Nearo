@@ -1,6 +1,6 @@
 import { timeAgo } from '../utils/time.js';
 
-export function createPostCard(post, userVote, hasReported, onVote, onReport) {
+export function createPostCard(post, userVote, hasReported, onVote, onReport, onPostClick) {
   const card = document.createElement('div');
   card.className = 'card';
   if (post.flagged) {
@@ -11,18 +11,36 @@ export function createPostCard(post, userVote, hasReported, onVote, onReport) {
   const downvoteColor = userVote === 'down' ? 'var(--accent)' : 'var(--text-secondary)';
   const reportColor = hasReported ? 'var(--accent)' : 'var(--text-secondary)';
 
+  const words = post.content.split(/\s+/);
+  const isLong = words.length > 50;
+  const displayContent = isLong ? words.slice(0, 50).join(' ') + '...' : post.content;
+
+  const pfp = post.pfp_url || '/assets/pfp/1.png';
+
   card.innerHTML = `
-    <div class="flex justify-between items-center" style="margin-bottom: var(--spacing-sm);">
-      <div class="mono" style="font-size: 0.8rem; font-weight: 700;">@${post.username}</div>
+    <div class="flex justify-between items-center" style="margin-bottom: var(--spacing-sm); cursor: ${isLong ? 'pointer' : 'default'};" class="post-header-area">
+      <div class="flex items-center gap-sm">
+        <img src="${pfp}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" />
+        <div class="mono" style="font-size: 0.8rem; font-weight: 700;">@${post.username}</div>
+      </div>
       <div class="mono" style="font-size: 0.75rem; color: var(--text-secondary);">${timeAgo(post.created_at)}</div>
     </div>
     
     ${post.flagged ? `<div class="mono accent" style="font-size: 0.75rem; margin-bottom: var(--spacing-sm);">⚠️ This post has been flagged by the community.</div>` : ''}
     
-    <h3 style="margin-bottom: var(--spacing-xs); font-size: 1.1rem;">${escapeHtml(post.title)}</h3>
-    <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: var(--spacing-md); word-wrap: break-word;">
-      ${escapeHtml(post.content)}
-    </p>
+    <div class="post-content-area" style="cursor: ${isLong ? 'pointer' : 'default'};">
+      <h3 style="margin-bottom: var(--spacing-xs); font-size: 1.1rem;">${escapeHtml(post.title)}</h3>
+      <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: var(--spacing-md); word-wrap: break-word;">
+        ${escapeHtml(displayContent)}
+        ${isLong ? `<span style="color: var(--accent); font-size: 0.85rem; font-weight: bold; margin-left: 4px;">Read more</span>` : ''}
+      </p>
+      
+      ${post.image_url ? `
+        <div style="margin-bottom: var(--spacing-md); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border);">
+          <img src="${post.image_url}" style="width: 100%; max-height: 300px; object-fit: cover; display: block;" />
+        </div>
+      ` : ''}
+    </div>
     
     <div class="flex items-center justify-between" style="border-top: 1px solid var(--border); padding-top: var(--spacing-sm);">
       <div class="flex items-center gap-sm">
@@ -42,9 +60,15 @@ export function createPostCard(post, userVote, hasReported, onVote, onReport) {
   `;
 
   // Events
-  card.querySelector('.vote-up').addEventListener('click', () => onVote(post.id, 'up'));
-  card.querySelector('.vote-down').addEventListener('click', () => onVote(post.id, 'down'));
-  card.querySelector('.btn-report').addEventListener('click', () => onReport(post.id));
+  card.querySelector('.vote-up').addEventListener('click', (e) => { e.stopPropagation(); onVote(post.id, 'up'); });
+  card.querySelector('.vote-down').addEventListener('click', (e) => { e.stopPropagation(); onVote(post.id, 'down'); });
+  card.querySelector('.btn-report').addEventListener('click', (e) => { e.stopPropagation(); onReport(post.id); });
+
+  if (isLong && onPostClick) {
+    const clickHandler = () => onPostClick(post);
+    card.querySelector('.post-header-area').addEventListener('click', clickHandler);
+    card.querySelector('.post-content-area').addEventListener('click', clickHandler);
+  }
 
   return card;
 }

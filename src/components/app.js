@@ -12,15 +12,24 @@ import { createFeed } from './feed.js';
 import { createNavbar } from './navbar.js';
 import { createAccountPanel } from './account.js';
 import { createPostModal } from './create-post.js';
+import { createInstructionsPage } from './instructions.js';
+import { createPostCard } from './post-card.js'; // reuse for detail
 import { showToast } from './toast.js';
 
 export function initApp() {
   const root = document.getElementById('app');
   state.initTheme();
 
-  let currentView = 'loading'; // loading, auth, feed, account
+  let currentView = 'loading'; // loading, auth, feed, account, instructions, post
   let currentSort = 'new';
   let isRateLimited = false;
+  let selectedPost = null;
+
+  // Global listeners for nav
+  window.addEventListener('nav-instructions', () => {
+    currentView = 'instructions';
+    render();
+  });
 
   // Render loop
   const render = async () => {
@@ -40,8 +49,8 @@ export function initApp() {
             const res = await withRateLimit('auth', () => signIn(email, pwd))();
             if (res.error) showToast(res.error, 'error');
           },
-          async (email, pwd, user) => {
-            const res = await withRateLimit('auth', () => signUp(email, pwd, user))();
+          async (email, pwd, user, pfpUrl) => {
+            const res = await withRateLimit('auth', () => signUp(email, pwd, user, pfpUrl))();
             if (res.error) showToast(res.error, 'error');
             else showToast('Identity created.', 'success');
           },
@@ -60,7 +69,12 @@ export function initApp() {
         (sort) => { currentSort = sort; loadFeedData(); },
         (query) => { handleSearch(query); },
         handleVote,
-        handleReport
+        handleReport,
+        (post) => {
+          selectedPost = post;
+          currentView = 'post';
+          render();
+        }
       );
       root.appendChild(feed);
       
@@ -108,6 +122,51 @@ export function initApp() {
         currentView = 'feed';
         render();
       }
+    }
+
+    if (currentView === 'instructions') {
+      root.appendChild(createInstructionsPage(() => {
+        currentView = 'feed';
+        render();
+      }));
+    }
+
+    if (currentView === 'post' && selectedPost) {
+      const detailContainer = document.createElement('div');
+      detailContainer.className = 'container flex-col';
+      detailContainer.style.padding = 'var(--spacing-md)';
+      
+      const backHeader = document.createElement('div');
+      backHeader.className = 'flex items-center gap-md';
+      backHeader.style.marginBottom = 'var(--spacing-lg)';
+      backHeader.innerHTML = `
+        <button id="btn-post-back" class="btn-icon">
+          <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        </button>
+        <h2 style="font-size: 1.2rem;">Post Details</h2>
+      `;
+      detailContainer.appendChild(backHeader);
+      
+      const voteType = (state.userVotes || {})[selectedPost.id] || null;
+      const reported = (state.userReports || new Set()).has(selectedPost.id);
+      
+      // We pass null for onPostClick to prevent recursion
+      const card = createPostCard(selectedPost, voteType, reported, handleVote, handleReport, null);
+      // Remove truncation for detail view
+      const contentPara = card.querySelector('p');
+      if (contentPara) {
+        contentPara.textContent = selectedPost.content;
+        const readMore = contentPara.querySelector('span');
+        if (readMore) readMore.remove();
+      }
+      
+      detailContainer.appendChild(card);
+      root.appendChild(detailContainer);
+      
+      detailContainer.querySelector('#btn-post-back').addEventListener('click', () => {
+        currentView = 'feed';
+        render();
+      });
     }
 
     // Add Navbar for feed/account

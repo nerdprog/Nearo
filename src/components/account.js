@@ -27,9 +27,12 @@ export function createAccountPanel(state, userPosts, streakData, onLogout, onDel
   profile.className = 'card flex justify-between items-center';
   profile.style.marginBottom = 'var(--spacing-lg)';
   profile.innerHTML = `
-    <div>
-      <div class="mono" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: var(--spacing-xs);">USERNAME</div>
-      <div style="font-size: 1.2rem; font-weight: 700;">@${user ? user.displayName : 'unknown'}</div>
+    <div class="flex items-center gap-md">
+      <img src="${user && user.photoURL ? user.photoURL : '/assets/pfp/1.png'}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border);" />
+      <div>
+        <div class="mono" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: var(--spacing-xs);">USERNAME</div>
+        <div style="font-size: 1.2rem; font-weight: 700;">@${user ? user.displayName : 'unknown'}</div>
+      </div>
     </div>
     <div style="text-align: right;">
       <div class="mono" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: var(--spacing-xs);">STREAK</div>

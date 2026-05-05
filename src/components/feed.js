@@ -2,7 +2,7 @@ import { createSearch } from './search.js';
 import { createPostCard } from './post-card.js';
 import { getResetCountdown } from '../utils/time.js';
 
-export function createFeed(state, onSort, onSearch, onVote, onReport) {
+export function createFeed(state, onSort, onSearch, onVote, onReport, onPostClick) {
   const container = document.createElement('div');
   container.className = 'container flex-col';
 
@@ -11,7 +11,7 @@ export function createFeed(state, onSort, onSearch, onVote, onReport) {
   header.className = 'flex justify-between items-center';
   header.style.marginBottom = 'var(--spacing-md)';
   header.innerHTML = `
-    <h1 style="font-size: 1.5rem; display: flex; align-items: center; gap: 8px;">
+    <h1 id="logo-nearo" style="font-size: 1.5rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
       <svg viewBox="0 0 64 64" width="24" height="24" fill="none"><rect width="64" height="64" rx="16" fill="var(--text-primary)"/><circle cx="32" cy="28" r="10" stroke="var(--bg-primary)" stroke-width="2.5" fill="none"/><circle cx="32" cy="28" r="3" fill="var(--accent)"/><path d="M20 48 C20 38 44 38 44 48" stroke="var(--bg-primary)" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
       NEARO
     </h1>
@@ -21,6 +21,11 @@ export function createFeed(state, onSort, onSearch, onVote, onReport) {
     </div>
   `;
   container.appendChild(header);
+
+  container.querySelector('#logo-nearo').addEventListener('click', () => {
+    // Navigate to instructions
+    window.dispatchEvent(new CustomEvent('nav-instructions'));
+  });
 
   // Update timer every minute
   setInterval(() => {
@@ -91,7 +96,7 @@ export function createFeed(state, onSort, onSearch, onVote, onReport) {
       const voteType = userVotesMap[post.id] || null;
       const reported = userReportsSet.has(post.id);
       
-      const card = createPostCard(post, voteType, reported, onVote, onReport);
+      const card = createPostCard(post, voteType, reported, onVote, onReport, onPostClick);
       // Staggered fade in
       card.style.opacity = '0';
       card.style.transform = 'translateY(10px)';

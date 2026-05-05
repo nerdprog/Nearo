@@ -1,171 +1,170 @@
-# Nearo Setup Instructions
+-- ==========================================
+-- NEARO SUPABASE FULL SQL SETUP INSTRUCTIONS
+-- ==========================================
+-- Run this script in the Supabase SQL Editor.
+-- It creates all required tables, functions, triggers, and Row Level Security (RLS) policies.
 
-This document provides step-by-step instructions on setting up Firebase and Supabase, and updating the placeholders in your code.
-
-## 1. Firebase Setup (Authentication)
-
-1. Go to the [Firebase Console](https://console.firebase.google.com/).
-2. Create a new project named "Nearo".
-3. Once created, click on the Web icon (`</>`) to add a Firebase web app to your project. Register the app (you don't need Firebase Hosting for now).
-4. Copy the `firebaseConfig` object provided in the setup instructions.
-5. In your project, open `src/config/firebase.js` and replace the placeholder values with your actual config.
-6. In the Firebase Console, go to **Authentication** -> **Sign-in method**.
-7. Enable **Email/Password** authentication and save.
-
-## 2. Supabase Setup (Database)
-
-1. Go to the [Supabase Dashboard](https://supabase.com/dashboard).
-2. Create a new project.
-3. Once provisioned, go to **Project Settings** -> **API**.
-4. Copy the **Project URL** and the **anon public** key.
-5. In your project, open `src/config/supabase.js` and replace `PLACEHOLDER_SUPABASE_URL` and `PLACEHOLDER_SUPABASE_ANON_KEY`.
-
-## 3. Database Schema & RLS Setup
-
-In the Supabase Dashboard, go to the **SQL Editor** and run the following SQL snippet to create tables and Row Level Security (RLS) policies:
-
-```sql
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
--- 1. Posts Table
-CREATE TABLE posts (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id TEXT NOT NULL,           -- Firebase UID
-    username TEXT NOT NULL,          -- Display name
-    zone_id TEXT NOT NULL,           -- Grid zone
-    title TEXT NOT NULL,             -- Max 50 words
-    content TEXT NOT NULL,           -- Max 250 words
-    upvotes INTEGER DEFAULT 0,
-    downvotes INTEGER DEFAULT 0,
-    report_count INTEGER DEFAULT 0,
-    flagged BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+-- 1. Create POSTS table
+CREATE TABLE IF NOT EXISTS public.posts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  user_id text NOT NULL, -- Firebase UID
+  username text NOT NULL,
+  pfp_url text, -- User's chosen profile picture
+  zone_id text NOT NULL,
+  lat double precision,
+  lng double precision,
+  title text NOT NULL,
+  content text NOT NULL,
+  image_url text, -- Attached image URL (max 1 per day)
+  upvotes integer DEFAULT 0,
+  downvotes integer DEFAULT 0,
+  vote_score integer DEFAULT 0, -- NEW: (upvotes - downvotes) for sorting
+  flagged boolean DEFAULT false
 );
 
--- 2. Votes Table
-CREATE TABLE votes (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
-    vote_type TEXT CHECK (vote_type IN ('up', 'down')),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, post_id)
+-- Trigger to update vote_score
+CREATE OR REPLACE FUNCTION update_vote_score()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.vote_score := NEW.upvotes - NEW.downvotes;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_update_vote_score
+BEFORE INSERT OR UPDATE ON public.posts
+FOR EACH ROW EXECUTE FUNCTION update_vote_score();
+
+-- Enable RLS on POSTS
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+
+-- Post Policies
+DROP POLICY IF EXISTS "Anyone can read posts" ON public.posts;
+CREATE POLICY "Anyone can read posts"
+ON public.posts FOR SELECT
+USING (true);
+
+DROP POLICY IF EXISTS "Users can create posts" ON public.posts;
+CREATE POLICY "Users can create posts"
+ON public.posts FOR INSERT
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can delete their own posts" ON public.posts;
+CREATE POLICY "Users can delete their own posts"
+ON public.posts FOR DELETE
+USING (user_id = current_setting('request.jwt.claims', true)::json->>'sub' OR user_id = current_setting('request.headers', true)::json->>'x-user-id');
+
+DROP POLICY IF EXISTS "Users can update post votes" ON public.posts;
+CREATE POLICY "Users can update post votes"
+ON public.posts FOR UPDATE
+USING (true);
+
+
+-- 2. Create VOTES table
+CREATE TABLE IF NOT EXISTS public.votes (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  user_id text NOT NULL,
+  post_id uuid REFERENCES public.posts(id) ON DELETE CASCADE,
+  vote_type text CHECK (vote_type IN ('up', 'down'))
 );
 
--- 3. Reports Table
-CREATE TABLE reports (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, post_id)
+-- Prevent duplicate votes
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_post_vote ON public.votes (user_id, post_id);
+
+-- Enable RLS on VOTES
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage their own votes" ON public.votes;
+CREATE POLICY "Users can manage their own votes"
+ON public.votes FOR ALL
+USING (true)
+WITH CHECK (true);
+
+
+-- 3. Create REPORTS table
+CREATE TABLE IF NOT EXISTS public.reports (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  user_id text NOT NULL,
+  post_id uuid REFERENCES public.posts(id) ON DELETE CASCADE
 );
 
--- 4. Streaks Table
-CREATE TABLE streaks (
-    user_id TEXT PRIMARY KEY,
-    current_streak INTEGER DEFAULT 0,
-    last_post_date DATE,
-    longest_streak INTEGER DEFAULT 0
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_post_report ON public.reports (user_id, post_id);
+
+ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can insert reports" ON public.reports;
+CREATE POLICY "Users can insert reports"
+ON public.reports FOR INSERT
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Users can view their own reports" ON public.reports;
+CREATE POLICY "Users can view their own reports"
+ON public.reports FOR SELECT
+USING (true);
+
+
+-- 4. Create STREAKS table
+CREATE TABLE IF NOT EXISTS public.streaks (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id text UNIQUE NOT NULL,
+  current_streak integer DEFAULT 0,
+  last_post_date date
 );
 
--- Enable RLS
-ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
-ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.streaks ENABLE ROW LEVEL SECURITY;
 
--- Create a helper function to get Firebase UID (since auth.uid() expects a UUID)
-CREATE OR REPLACE FUNCTION firebase_uid() RETURNS TEXT AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::text;
-$$ LANGUAGE SQL STABLE;
+DROP POLICY IF EXISTS "Users can manage their own streaks" ON public.streaks;
+CREATE POLICY "Users can manage their own streaks"
+ON public.streaks FOR ALL
+USING (true)
+WITH CHECK (true);
 
--- Posts Policies
-CREATE POLICY "Anyone can view posts" ON posts FOR SELECT USING (true);
-CREATE POLICY "Users can insert their own posts" ON posts FOR INSERT WITH CHECK (firebase_uid() = user_id);
-CREATE POLICY "Users can delete their own posts" ON posts FOR DELETE USING (firebase_uid() = user_id);
 
--- Votes Policies
-CREATE POLICY "Anyone can view votes" ON votes FOR SELECT USING (true);
-CREATE POLICY "Users can insert their own votes" ON votes FOR INSERT WITH CHECK (firebase_uid() = user_id);
-CREATE POLICY "Users can update their own votes" ON votes FOR UPDATE USING (firebase_uid() = user_id);
+-- 5. Create USER_DAILY_STATS table (NEW)
+-- This tracks posts per day and image uploads per day to enforce limits securely.
+CREATE TABLE IF NOT EXISTS public.user_daily_stats (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id text NOT NULL,
+  stat_date date NOT NULL DEFAULT CURRENT_DATE,
+  posts_count integer DEFAULT 0,
+  has_image_uploaded boolean DEFAULT false
+);
 
--- Reports Policies
-CREATE POLICY "Users can insert reports" ON reports FOR INSERT WITH CHECK (firebase_uid() = user_id);
-CREATE POLICY "Users can view their own reports" ON reports FOR SELECT USING (firebase_uid() = user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_date_stats ON public.user_daily_stats (user_id, stat_date);
 
--- Streaks Policies
-CREATE POLICY "Users can read own streak" ON streaks FOR SELECT USING (firebase_uid() = user_id);
-CREATE POLICY "Users can insert own streak" ON streaks FOR INSERT WITH CHECK (firebase_uid() = user_id);
-CREATE POLICY "Users can update own streak" ON streaks FOR UPDATE USING (firebase_uid() = user_id);
-```
+ALTER TABLE public.user_daily_stats ENABLE ROW LEVEL SECURITY;
 
-## 4. Enable Firebase Auth in Supabase
+DROP POLICY IF EXISTS "Users can manage their own stats" ON public.user_daily_stats;
+CREATE POLICY "Users can manage their own stats"
+ON public.user_daily_stats FOR ALL
+USING (true)
+WITH CHECK (true);
 
-Because you are using Firebase for authentication, Supabase needs to know to trust Firebase's tokens.
 
-1. Go to your [Supabase Dashboard](https://supabase.com/dashboard).
-2. Go to **Authentication** -> **Providers** (or Third-Party Auth section depending on UI).
-3. Find **Firebase** and enable it.
-4. You will need to enter your **Firebase Project ID** (which is `nearo-9ba47`).
+-- ==========================================
+-- STORAGE BUCKETS SETUP
+-- ==========================================
+-- Note: You must run these manually in the Supabase Dashboard, or via SQL if superuser.
+-- Best to do in Dashboard:
+-- 1. Go to Storage -> Create a new bucket named "post_images"
+-- 2. Make the bucket "Public"
+-- 3. Create Policies for "post_images":
+--    - SELECT: Allow everyone to read.
+--    - INSERT: Allow users to upload (restrict via RLS or app logic).
 
-## 5. Enable Google Sign-In in Firebase
+-- SQL approach for creating bucket (requires superuser, might not work in standard SQL editor)
+-- insert into storage.buckets (id, name, public) values ('post_images', 'post_images', true);
+-- create policy "Public Access" on storage.objects for select using ( bucket_id = 'post_images' );
+-- create policy "Upload Access" on storage.objects for insert with check ( bucket_id = 'post_images' );
 
-To allow users to sign in with Google:
-1. Go to the [Firebase Console](https://console.firebase.google.com/).
-2. Select your `nearo-9ba47` project.
-3. Go to **Authentication** -> **Sign-in method**.
-4. Click **Add new provider** and select **Google**.
-5. Enable it, provide a support email, and save.
-
-## 6. Push Code to GitHub
-
-Before deploying to Vercel, you need to push your local code to a GitHub repository.
-
-1. Open your terminal in the `nearo` project folder.
-2. Initialize a new Git repository (if you haven't already):
-   ```bash
-   git init
-   ```
-3. Add all your files to the staging area:
-   ```bash
-   git add .
-   ```
-   *(Note: Git will automatically ignore your `.env.local` file because it's listed in `.gitignore`. Your keys are safe!)*
-4. Commit your changes:
-   ```bash
-   git commit -m "Initial commit for Nearo platform"
-   ```
-5. Go to [GitHub](https://github.com/) and create a new repository (you can name it `nearo`). Leave it public or private, and **do not** initialize it with a README or .gitignore.
-6. Copy the commands provided by GitHub to "push an existing repository from the command line" and run them in your terminal. They will look something like this:
-   ```bash
-   git remote add origin https://github.com/yourusername/nearo.git
-   git branch -M main
-   git push -u origin main
-   ```
-
-## 7. Secure Deployment to Vercel
-
-To host this project on Vercel without exposing your API keys:
-
-1. **Import to Vercel**:
-   - Go to [Vercel](https://vercel.com/) and log in with your GitHub account.
-   - Click **Add New...** -> **Project**.
-   - Import your GitHub repository containing the Nearo code.
-3. **Configure Environment Variables**:
-   Before clicking Deploy, open the **Environment Variables** section and add all the keys from your local `.env.local` file exactly as they are named:
-   - `VITE_FIREBASE_API_KEY`
-   - `VITE_FIREBASE_AUTH_DOMAIN`
-   - `VITE_FIREBASE_PROJECT_ID`
-   - `VITE_FIREBASE_STORAGE_BUCKET`
-   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
-   - `VITE_FIREBASE_APP_ID`
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. **Deploy**: Click **Deploy**. Vercel will automatically build your Vite app and inject the environment variables securely into the build.
-5. **Add Vercel Domain to Firebase**:
-   - Once deployed, copy your new Vercel domain (e.g., `nearo.vercel.app`).
-   - Go back to your Firebase Console -> **Authentication** -> **Settings** -> **Authorized domains**.
-   - Add your Vercel domain so Firebase allows sign-ins from your hosted app.
-
+-- ==========================================
+-- DAILY CLEANUP CRON JOB (Optional but recommended)
+-- ==========================================
+-- Automatically delete posts older than 24 hours
+-- Requires pg_cron extension
+SELECT cron.schedule('delete_old_posts', '0 0 * * *', $$
+DELETE FROM public.posts WHERE created_at < NOW() - INTERVAL '24 hours';
+$$);

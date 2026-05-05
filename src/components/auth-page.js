@@ -6,6 +6,11 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
   container.style.minHeight = '100vh';
 
   let mode = 'login'; // 'login' or 'signup'
+  let selectedPfp = '/assets/pfp/1.png'; // default pfp
+
+  // PFP list (5 men, 5 women)
+  const pfpList = Array.from({length: 10}, (_, i) => `/assets/pfp/${i + 1}.png`);
+
 
   // Creative username placeholders
   const placeholders = ['CoolName99', 'NeonRider', 'CyberNomad', 'PixelGhost', 'VoidWalker', 'SynthWave', 'SilentObserver', 'DigitalDrifter', 'ChronoSeeker', 'SheHasNoIdea'];
@@ -56,6 +61,15 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
               <label class="input-label">Username</label>
               <input type="text" id="username" class="input-field placeholder-fade" placeholder="CoolName99" required />
             </div>
+            
+            <div class="input-group">
+              <label class="input-label">Choose Avatar</label>
+              <div class="pfp-grid flex gap-sm" style="flex-wrap: wrap; justify-content: center; margin-top: var(--spacing-sm);">
+                ${pfpList.map(pfp => `
+                  <img src="${pfp}" class="pfp-option ${selectedPfp === pfp ? 'selected' : ''}" data-url="${pfp}" style="width: 48px; height: 48px; border-radius: 50%; cursor: pointer; border: 2px solid ${selectedPfp === pfp ? 'var(--accent)' : 'transparent'}; opacity: ${selectedPfp === pfp ? '1' : '0.6'}; transition: all 0.2s;" />
+                `).join('')}
+              </div>
+            </div>
           ` : ''}
           
           <div class="input-group">
@@ -83,6 +97,15 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
     // Events
     container.querySelector('#tab-login').addEventListener('click', () => { mode = 'login'; render(); });
     container.querySelector('#tab-signup').addEventListener('click', () => { mode = 'signup'; render(); });
+
+    if (mode === 'signup') {
+      container.querySelectorAll('.pfp-option').forEach(img => {
+        img.addEventListener('click', (e) => {
+          selectedPfp = e.target.dataset.url;
+          render(); // Re-render to update selected state
+        });
+      });
+    }
 
     container.querySelector('#btn-google').addEventListener('click', () => {
       onGoogleSignIn();
@@ -114,7 +137,7 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
         const passVal = validatePassword(password);
         if (!passVal.valid) { btn.disabled = false; btn.textContent = 'Create Identity'; return alert(passVal.error); }
 
-        onSignUp(email, password, username).finally(() => {
+        onSignUp(email, password, username, selectedPfp).finally(() => {
           btn.disabled = false;
           btn.textContent = 'Create Identity';
         });

@@ -49,12 +49,11 @@ export function createPostModal(onSubmit, onCancel) {
 
     <div class="input-group">
       <label class="input-label">Image</label>
-      <div style="border: 1px dashed var(--border); padding: var(--spacing-lg); text-align: center; border-radius: var(--radius-md); position: relative; opacity: 0.6; background-color: var(--bg-secondary);">
+      <div id="image-upload-area" style="border: 1px dashed var(--border); padding: var(--spacing-lg); text-align: center; border-radius: var(--radius-md); position: relative; cursor: pointer; background-color: var(--bg-secondary);">
         <svg viewBox="0 0 24 24" style="width: 32px; height: 32px; stroke: var(--text-secondary); fill: none; stroke-width: 1.5; margin-bottom: var(--spacing-sm);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-        <p class="mono" style="font-size: 0.8rem; color: var(--text-secondary);">Image upload</p>
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--text-primary); color: var(--bg-primary); padding: 4px 8px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.7rem; font-weight: bold; text-transform: uppercase;">Coming Soon</div>
+        <p class="mono" id="image-upload-text" style="font-size: 0.8rem; color: var(--text-secondary);">Click to attach image (Max 1/day)</p>
       </div>
-      <input type="file" id="post-image" accept="image/*" disabled style="display: none;" />
+      <input type="file" id="post-image" accept="image/*" style="display: none;" />
     </div>
 
     <button id="btn-submit" class="btn btn-primary" style="margin-top: auto; margin-bottom: var(--spacing-md);">Post to Zone</button>
@@ -80,6 +79,23 @@ export function createPostModal(onSubmit, onCancel) {
   titleInput.addEventListener('input', (e) => updateWordCount(e.target.value, titleCounter, 50));
   contentInput.addEventListener('input', (e) => updateWordCount(e.target.value, contentCounter, 250));
 
+  const imageUploadArea = container.querySelector('#image-upload-area');
+  const imageInput = container.querySelector('#post-image');
+  const imageUploadText = container.querySelector('#image-upload-text');
+
+  imageUploadArea.addEventListener('click', () => imageInput.click());
+  imageInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      imageUploadText.textContent = e.target.files[0].name;
+      imageUploadArea.style.borderColor = 'var(--accent)';
+      imageUploadArea.style.color = 'var(--accent)';
+    } else {
+      imageUploadText.textContent = 'Click to attach image (Max 1/day)';
+      imageUploadArea.style.borderColor = 'var(--border)';
+      imageUploadArea.style.color = 'var(--text-secondary)';
+    }
+  });
+
   cancelBtn.addEventListener('click', onCancel);
 
   submitBtn.addEventListener('click', () => {
@@ -95,10 +111,9 @@ export function createPostModal(onSubmit, onCancel) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<div class="loader"></div>';
     
-    // The actual image file logic is commented out/disabled for now.
-    // If enabled, we would grab container.querySelector('#post-image').files[0]
+    const imageFile = imageInput.files.length > 0 ? imageInput.files[0] : null;
     
-    onSubmit(title, content, null).finally(() => {
+    onSubmit(title, content, imageFile).finally(() => {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Post to Zone';
     });

@@ -52,14 +52,15 @@ function mapAuthError(error) {
 /**
  * Sign up a new user
  */
-export async function signUp(email, password, username) {
+export async function signUp(email, password, username, pfpUrl = '/assets/pfp/1.png') {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    // Update profile with username
+    // Update profile with username and pfp
     await updateProfile(user, {
-      displayName: username
+      displayName: username,
+      photoURL: pfpUrl
     });
     
     return { user, error: null };
