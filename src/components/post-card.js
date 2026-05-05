@@ -11,17 +11,17 @@ export function createPostCard(post, userVote, hasReported, onVote, onReport, on
   const downvoteColor = userVote === 'down' ? 'var(--accent)' : 'var(--text-secondary)';
   const reportColor = hasReported ? 'var(--accent)' : 'var(--text-secondary)';
 
-  const words = post.content.split(/\s+/);
+  const words = (post.content || '').trim().split(/\s+/).filter(Boolean);
   const isLong = words.length > 50;
   const displayContent = isLong ? words.slice(0, 50).join(' ') + '...' : post.content;
 
-  const pfp = post.pfp_url || '/assets/pfp/1.png';
+  const pfp = post.pfp_url || '/assets/pfp/placeholder.svg';
 
   card.innerHTML = `
-    <div class="flex justify-between items-center" style="margin-bottom: var(--spacing-sm); cursor: ${isLong ? 'pointer' : 'default'};" class="post-header-area">
+    <div class="post-header-area flex justify-between items-center" style="margin-bottom: var(--spacing-sm); cursor: ${isLong ? 'pointer' : 'default'};">
       <div class="flex items-center gap-sm">
-        <img src="${pfp}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" />
-        <div class="mono" style="font-size: 0.8rem; font-weight: 700;">@${post.username}</div>
+        <img src="${escapeHtml(pfp)}" alt="" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" />
+        <div class="mono" style="font-size: 0.8rem; font-weight: 700;">@${escapeHtml(post.username)}</div>
       </div>
       <div class="mono" style="font-size: 0.75rem; color: var(--text-secondary);">${timeAgo(post.created_at)}</div>
     </div>
@@ -37,7 +37,7 @@ export function createPostCard(post, userVote, hasReported, onVote, onReport, on
       
       ${post.image_url ? `
         <div style="margin-bottom: var(--spacing-md); border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border);">
-          <img src="${post.image_url}" style="width: 100%; max-height: 300px; object-fit: cover; display: block;" />
+          <img src="${escapeHtml(post.image_url)}" alt="" style="width: 100%; max-height: 300px; object-fit: cover; display: block;" />
         </div>
       ` : ''}
     </div>

@@ -22,14 +22,28 @@ export async function getUserVotes(postIds) {
 export async function votePost(postId, voteType) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
+
+  const { error: rpcError } = await supabase.rpc('set_post_vote', {
+    p_post_id: postId,
+    p_user_id: user.uid,
+    p_vote_type: voteType
+  });
+
+  if (!rpcError) return true;
+  if (rpcError.code !== '42883' && rpcError.code !== 'PGRST202') {
+    console.error("Vote RPC error:", rpcError);
+    throw rpcError;
+  }
   
-  // 1. Get current vote
-  const { data: existingVote } = await supabase
+  // Fallback for databases that have not run setup_instruction.txt yet.
+  const { data: existingVote, error: voteFetchError } = await supabase
     .from('votes')
     .select('*')
     .eq('user_id', user.uid)
     .eq('post_id', postId)
-    .single();
+    .maybeSingle();
+
+  if (voteFetchError) throw voteFetchError;
     
   let postUpvoteChange = 0;
   let postDownvoteChange = 0;
@@ -37,12 +51,14 @@ export async function votePost(postId, voteType) {
   if (existingVote) {
     if (existingVote.vote_type === voteType) {
       // Removing vote
-      await supabase.from('votes').delete().eq('id', existingVote.id);
+      const { error } = await supabase.from('votes').delete().eq('id', existingVote.id);
+      if (error) throw error;
       if (voteType === 'up') postUpvoteChange = -1;
       else postDownvoteChange = -1;
     } else {
       // Changing vote
-      await supabase.from('votes').update({ vote_type: voteType }).eq('id', existingVote.id);
+      const { error } = await supabase.from('votes').update({ vote_type: voteType }).eq('id', existingVote.id);
+      if (error) throw error;
       if (voteType === 'up') {
         postUpvoteChange = 1;
         postDownvoteChange = -1;
@@ -53,24 +69,29 @@ export async function votePost(postId, voteType) {
     }
   } else {
     // New vote
-    await supabase.from('votes').insert([{
+    const { error } = await supabase.from('votes').insert([{
       user_id: user.uid,
       post_id: postId,
       vote_type: voteType
     }]);
+    if (error) throw error;
     if (voteType === 'up') postUpvoteChange = 1;
     else postDownvoteChange = 1;
   }
   
   // Note: For a production app, the vote count update should ideally be handled by a Postgres Function/Trigger
   // to prevent race conditions. Here we do it client-side for simplicity.
-  const { data: post } = await supabase.from('posts').select('upvotes, downvotes').eq('id', postId).single();
+  const { data: post, error: postError } = await supabase.from('posts').select('upvotes, downvotes').eq('id', postId).single();
+  if (postError) throw postError;
   
   if (post) {
-    await supabase.from('posts').update({
-      upvotes: post.upvotes + postUpvoteChange,
-      downvotes: post.downvotes + postDownvoteChange
+    const nextUpvotes = Math.max(0, (post.upvotes || 0) + postUpvoteChange);
+    const nextDownvotes = Math.max(0, (post.downvotes || 0) + postDownvoteChange);
+    const { error } = await supabase.from('posts').update({
+      upvotes: nextUpvotes,
+      downvotes: nextDownvotes
     }).eq('id', postId);
+    if (error) throw error;
   }
   
   return true;

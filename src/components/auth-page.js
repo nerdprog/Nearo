@@ -6,10 +6,13 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
   container.style.minHeight = '100vh';
 
   let mode = 'login'; // 'login' or 'signup'
-  let selectedPfp = '/assets/pfp/1.png'; // default pfp
+  let selectedPfp = '/assets/pfp/placeholder.svg';
 
-  // PFP list (5 men, 5 women)
-  const pfpList = Array.from({length: 10}, (_, i) => `/assets/pfp/${i + 1}.png`);
+  // Place profile images in public/assets/pfp. Replace these placeholders with project avatars as needed.
+  const pfpList = [
+    '/assets/pfp/placeholder.svg',
+    ...Array.from({length: 10}, (_, i) => `/assets/pfp/avatar-${String(i + 1).padStart(2, '0')}.svg`)
+  ];
 
 
   // Creative username placeholders
@@ -74,7 +77,7 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
           
           <div class="input-group">
             <label class="input-label">Password</label>
-            <input type="password" id="password" class="input-field" placeholder="••••••••" required />
+            <input type="password" id="password" class="input-field" placeholder="Password" required />
           </div>
           
           <button type="submit" id="btn-submit" class="btn btn-primary" style="margin-top: var(--spacing-md); width: 100%;">

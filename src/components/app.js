@@ -1,7 +1,7 @@
 import { state } from '../modules/state.js';
 import { onAuthChange, signIn, signUp, signOut, deleteAccount, signInWithGoogle } from '../modules/auth.js';
 import { updateLocation, calculateDistance } from '../modules/geo.js';
-import { fetchPosts, createPost, getUserPosts, deletePost as removePost, searchPosts } from '../modules/posts.js';
+import { fetchPosts, createPost, getUserPosts, getDailyStats, deletePost as removePost, searchPosts } from '../modules/posts.js';
 import { votePost, getUserVotes } from '../modules/votes.js';
 import { reportPost, getReportedPosts } from '../modules/reports.js';
 import { getStreak, updateStreakOnPost } from '../modules/streaks.js';
@@ -78,8 +78,7 @@ export function initApp() {
         const modal = createPostModal(
           async (title, content, img) => {
             try {
-              const pfpUrl = state.user?.photoURL || null;
-              await withRateLimit('post', () => createPost(title, content, state.zoneId, state.lat, state.lng, img, pfpUrl))();
+              await withRateLimit('post', () => createPost(title, content, state.zoneId, state.lat, state.lng, img))();
               await updateStreakOnPost();
               showToast('Posted to zone.', 'success');
               document.body.removeChild(modal);
@@ -132,15 +131,16 @@ export function initApp() {
       contentArea.appendChild(loader);
       
       try {
-        const [posts, streak] = await Promise.all([
+        const [posts, streak, dailyStats] = await Promise.all([
           getUserPosts(),
-          getStreak()
+          getStreak(),
+          getDailyStats()
         ]);
         
         if (currentView !== 'account') return;
         contentArea.innerHTML = '';
         contentArea.appendChild(createAccountPanel(
-          state, posts, streak,
+          state, posts, streak, dailyStats,
           async () => { await signOut(); },
           async () => {
             const res = await deleteAccount();
@@ -271,6 +271,9 @@ export function initApp() {
       // Optimistic update
       const currentVote = state.userVotes[postId];
       let post = state.posts.find(p => p.id === postId);
+      if (!post) return;
+      post.upvotes = post.upvotes || 0;
+      post.downvotes = post.downvotes || 0;
       
       if (currentVote === type) {
         delete state.userVotes[postId];
@@ -284,6 +287,12 @@ export function initApp() {
           post.downvotes++;
           if (currentVote === 'up') post.upvotes--;
         }
+      }
+      post.upvotes = Math.max(0, post.upvotes || 0);
+      post.downvotes = Math.max(0, post.downvotes || 0);
+      post.vote_score = post.upvotes - post.downvotes;
+      if (currentSort === 'top') {
+        state.posts.sort((a, b) => ((b.vote_score ?? ((b.upvotes || 0) - (b.downvotes || 0))) - (a.vote_score ?? ((a.upvotes || 0) - (a.downvotes || 0)))) || new Date(b.created_at) - new Date(a.created_at));
       }
       state.notify();
     } catch (e) {

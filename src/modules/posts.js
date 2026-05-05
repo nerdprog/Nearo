@@ -54,16 +54,46 @@ export async function searchPosts(searchQuery, zoneIds) {
 export async function getUserPosts() {
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
   
   const { data, error } = await supabase
     .from('posts')
     .select('*')
     .eq('user_id', user.uid)
+    .gte('created_at', start.toISOString())
+    .lt('created_at', end.toISOString())
     .order('created_at', { ascending: false });
     
   if (error) {
     console.error("Get user posts error:", error);
     throw error;
+  }
+  
+  return data;
+}
+
+/**
+ * Get daily stats for current user
+ */
+export async function getDailyStats() {
+  const user = auth.currentUser;
+  if (!user) return null;
+  
+  const today = getLocalDateString();
+  const { data, error } = await supabase
+    .from('user_daily_stats')
+    .select('*')
+    .eq('user_id', user.uid)
+    .eq('stat_date', today)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error("Get daily stats error:", error);
+    return null;
   }
   
   return data;
@@ -76,7 +106,7 @@ export async function createPost(title, content, zoneId, lat = null, lng = null,
   const user = auth.currentUser;
   if (!user) throw new Error("Not authenticated");
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   
   // Check daily stats
   const { data: statsData, error: statsError } = await supabase
@@ -118,7 +148,7 @@ export async function createPost(title, content, zoneId, lat = null, lng = null,
     imageUrl = publicUrlData.publicUrl;
   }
 
-  const pfpUrl = user.photoURL || '/assets/pfp/1.png';
+  const pfpUrl = user.photoURL || '/assets/pfp/placeholder.svg';
 
   const { data, error } = await supabase
     .from('posts')
@@ -140,20 +170,7 @@ export async function createPost(title, content, zoneId, lat = null, lng = null,
     throw error;
   }
 
-  // Update daily stats
-  if (statsData) {
-    await supabase.from('user_daily_stats').update({
-      posts_count: postsCount + 1,
-      has_image_uploaded: hasImage || !!imageUrl
-    }).eq('id', statsData.id);
-  } else {
-    await supabase.from('user_daily_stats').insert([{
-      user_id: user.uid,
-      stat_date: today,
-      posts_count: 1,
-      has_image_uploaded: !!imageUrl
-    }]);
-  }
+  await ensureDailyStatsCount(today, statsData, postsCount, !!imageUrl);
   
   return data[0];
 }
@@ -173,4 +190,43 @@ export async function deletePost(postId) {
   }
   
   return true;
+}
+
+function getLocalDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+async function ensureDailyStatsCount(today, previousStats, previousPostsCount, postedImage) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const { data: latestStats, error } = await supabase
+    .from('user_daily_stats')
+    .select('*')
+    .eq('user_id', user.uid)
+    .eq('stat_date', today)
+    .single();
+
+  if (error && error.code !== 'PGRST116') return;
+
+  if (!latestStats) {
+    await supabase.from('user_daily_stats').insert([{
+      user_id: user.uid,
+      stat_date: today,
+      posts_count: 1,
+      has_image_uploaded: postedImage
+    }]);
+    return;
+  }
+
+  const triggerAlreadyCounted = latestStats.posts_count > previousPostsCount;
+  if (!triggerAlreadyCounted && previousStats) {
+    await supabase.from('user_daily_stats').update({
+      posts_count: previousPostsCount + 1,
+      has_image_uploaded: latestStats.has_image_uploaded || postedImage
+    }).eq('id', latestStats.id);
+  }
 }
