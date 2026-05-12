@@ -321,6 +321,7 @@ export function initApp() {
             <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; stroke: #fbbf24; fill: none; stroke-width: 2; margin-bottom: var(--spacing-md);"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
             <h2 style="margin-bottom: var(--spacing-sm);">Verify Your Email</h2>
             <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-lg);">We've sent a verification link to your email. Please verify your identity to access Nearo.</p>
+            <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: var(--spacing-md);">If you do not see it, please check your spam folder.</p>
             <button id="btn-force-out-verify" class="btn btn-outline" style="margin-top: var(--spacing-sm);">Back to Login</button>
           </div>
         `;
