@@ -7,6 +7,7 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
 
   let mode = 'login'; // 'login' or 'signup'
   let selectedPfp = '/assets/pfp/placeholder.svg';
+  let selectedGender = '';
 
   // Place profile images in public/assets/pfp. Replace these placeholders with project avatars as needed.
   const pfpList = [
@@ -41,6 +42,19 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
 
   const render = () => {
     container.innerHTML = `
+      <style>
+        .gender-btn:hover[data-gender="Male"] { border-color: #3b82f6 !important; }
+        .gender-btn:hover[data-gender="Male"] .gender-icon { stroke: #3b82f6 !important; }
+        .gender-btn:hover[data-gender="Male"] span { color: #3b82f6 !important; }
+        
+        .gender-btn:hover[data-gender="Female"] { border-color: #ec4899 !important; }
+        .gender-btn:hover[data-gender="Female"] .gender-icon { stroke: #ec4899 !important; }
+        .gender-btn:hover[data-gender="Female"] span { color: #ec4899 !important; }
+        
+        .gender-btn:hover[data-gender="Others"] { border-color: #9ca3af !important; }
+        .gender-btn:hover[data-gender="Others"] .gender-icon { stroke: #9ca3af !important; }
+        .gender-btn:hover[data-gender="Others"] span { color: #9ca3af !important; }
+      </style>
       <div style="text-align: center; margin-bottom: var(--spacing-xl);">
         <svg viewBox="0 0 64 64" width="64" height="64" fill="none" style="margin-bottom: var(--spacing-md);"><rect width="64" height="64" rx="16" fill="var(--text-primary)"/><circle cx="32" cy="28" r="10" stroke="var(--bg-primary)" stroke-width="2.5" fill="none"/><circle cx="32" cy="28" r="3" fill="var(--accent)"/><path d="M20 48 C20 38 44 38 44 48" stroke="var(--bg-primary)" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
         <h1 style="font-size: 2rem; margin-bottom: var(--spacing-xs);">NEURO</h1>
@@ -71,6 +85,24 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
                 ${pfpList.map(pfp => `
                   <img src="${pfp}" class="pfp-option ${selectedPfp === pfp ? 'selected' : ''}" data-url="${pfp}" style="width: 48px; height: 48px; border-radius: 50%; cursor: pointer; border: 2px solid ${selectedPfp === pfp ? 'var(--accent)' : 'transparent'}; opacity: ${selectedPfp === pfp ? '1' : '0.6'}; transition: all 0.2s;" />
                 `).join('')}
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label">Gender</label>
+              <div class="flex gap-md" style="justify-content: center; margin-top: var(--spacing-sm);">
+                <button type="button" class="gender-btn flex-col items-center justify-center gap-xs" data-gender="Male" style="flex: 1; padding: var(--spacing-sm); border-radius: var(--radius-md); border: 2px solid ${selectedGender === 'Male' ? '#3b82f6' : 'var(--border)'}; background: transparent; cursor: pointer; transition: all 0.2s;">
+                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="${selectedGender === 'Male' ? '#3b82f6' : 'var(--text-secondary)'}" stroke-width="2" fill="none" class="gender-icon" style="transition: stroke 0.2s;"><circle cx="10" cy="14" r="5"/><line x1="14" y1="10" x2="21" y2="3"/><polyline points="16 3 21 3 21 8"/></svg>
+                  <span class="mono" style="font-size: 0.8rem; color: ${selectedGender === 'Male' ? '#3b82f6' : 'var(--text-secondary)'}; transition: color 0.2s;">Male</span>
+                </button>
+                <button type="button" class="gender-btn flex-col items-center justify-center gap-xs" data-gender="Female" style="flex: 1; padding: var(--spacing-sm); border-radius: var(--radius-md); border: 2px solid ${selectedGender === 'Female' ? '#ec4899' : 'var(--border)'}; background: transparent; cursor: pointer; transition: all 0.2s;">
+                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="${selectedGender === 'Female' ? '#ec4899' : 'var(--text-secondary)'}" stroke-width="2" fill="none" class="gender-icon" style="transition: stroke 0.2s;"><circle cx="12" cy="10" r="5"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="9" y1="19" x2="15" y2="19"/></svg>
+                  <span class="mono" style="font-size: 0.8rem; color: ${selectedGender === 'Female' ? '#ec4899' : 'var(--text-secondary)'}; transition: color 0.2s;">Female</span>
+                </button>
+                <button type="button" class="gender-btn flex-col items-center justify-center gap-xs" data-gender="Others" style="flex: 1; padding: var(--spacing-sm); border-radius: var(--radius-md); border: 2px solid ${selectedGender === 'Others' ? '#9ca3af' : 'var(--border)'}; background: transparent; cursor: pointer; transition: all 0.2s;">
+                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="${selectedGender === 'Others' ? '#9ca3af' : 'var(--text-secondary)'}" stroke-width="2" fill="none" class="gender-icon" style="transition: stroke 0.2s;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="7" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="17"/><line x1="2" y1="12" x2="7" y2="12"/><line x1="17" y1="12" x2="22" y2="12"/></svg>
+                  <span class="mono" style="font-size: 0.8rem; color: ${selectedGender === 'Others' ? '#9ca3af' : 'var(--text-secondary)'}; transition: color 0.2s;">Others</span>
+                </button>
               </div>
             </div>
           ` : ''}
@@ -108,6 +140,12 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
           render(); // Re-render to update selected state
         });
       });
+      container.querySelectorAll('.gender-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          selectedGender = e.currentTarget.dataset.gender;
+          render();
+        });
+      });
     }
 
     container.querySelector('#btn-google').addEventListener('click', () => {
@@ -139,8 +177,10 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
 
         const passVal = validatePassword(password);
         if (!passVal.valid) { btn.disabled = false; btn.textContent = 'Create Identity'; return alert(passVal.error); }
+        
+        if (!selectedGender) { btn.disabled = false; btn.textContent = 'Create Identity'; return alert('Please select a gender.'); }
 
-        onSignUp(email, password, username, selectedPfp).finally(() => {
+        onSignUp(email, password, username, selectedPfp, selectedGender).finally(() => {
           btn.disabled = false;
           btn.textContent = 'Create Identity';
         });

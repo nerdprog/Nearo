@@ -10,8 +10,18 @@ export function createAccountPanel(state, userPosts, streakData, dailyStats, onL
   const pfpUrl = user?.photoURL || '/assets/pfp/placeholder.svg';
 
   container.innerHTML = `
-    <div class="card" style="margin-bottom: var(--spacing-lg);">
-      <div class="flex items-center gap-md" style="margin-bottom: var(--spacing-md);">
+    <style>
+      html[data-theme="dark"] .theme-moon { display: none; }
+      html[data-theme="light"] .theme-moon { display: block; }
+      html[data-theme="dark"] .theme-sun { display: block; }
+      html[data-theme="light"] .theme-sun { display: none; }
+    </style>
+    <div class="card" style="margin-bottom: var(--spacing-lg); position: relative;">
+      <button id="btn-theme-toggle" class="btn-icon" style="position: absolute; top: var(--spacing-md); right: var(--spacing-md); color: var(--text-secondary);" title="Toggle Theme">
+        <svg class="theme-moon" viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <svg class="theme-sun" viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      </button>
+      <div class="flex items-center gap-md" style="margin-bottom: var(--spacing-md); padding-right: 32px;">
         <img src="${escapeHtml(pfpUrl)}" alt="" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border);" />
         <div style="min-width: 0;">
           <h2 style="font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(user?.displayName || 'Anonymous')}</h2>
@@ -69,13 +79,12 @@ export function createAccountPanel(state, userPosts, streakData, dailyStats, onL
   const actions = document.createElement('div');
   actions.className = 'flex-col gap-md';
   actions.innerHTML = `
-    <button id="btn-theme" class="btn btn-outline" style="width: 100%;">Toggle Theme</button>
     <button id="btn-logout" class="btn btn-outline" style="width: 100%;">Log Out</button>
     <button id="btn-delete-account" class="btn" style="width: 100%; color: var(--error); border: 1px solid var(--error);">Delete Account</button>
   `;
   container.appendChild(actions);
 
-  container.querySelector('#btn-theme').addEventListener('click', () => state.toggleTheme());
+  container.querySelector('#btn-theme-toggle').addEventListener('click', () => state.toggleTheme());
   container.querySelector('#btn-logout').addEventListener('click', onLogout);
   container.querySelector('#btn-delete-account').addEventListener('click', () => {
     if (confirm("Are you sure? This will delete your account and all your data. This action cannot be undone.")) {

@@ -6,7 +6,8 @@ import {
   deleteUser,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  sendEmailVerification
 } from "firebase/auth";
 import { auth } from "../config/firebase.js";
 import { supabase } from "../config/supabase.js";
@@ -52,7 +53,7 @@ function mapAuthError(error) {
 /**
  * Sign up a new user
  */
-export async function signUp(email, password, username, pfpUrl = '/assets/pfp/1.png') {
+export async function signUp(email, password, username, pfpUrl = '/assets/pfp/1.png', gender = 'Others') {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -62,6 +63,16 @@ export async function signUp(email, password, username, pfpUrl = '/assets/pfp/1.
       displayName: username,
       photoURL: pfpUrl
     });
+
+    // Insert gender into Supabase profiles
+    await supabase.from('profiles').insert({
+      id: user.uid,
+      gender: gender
+    });
+
+    // Send email verification and sign out to require verification
+    await sendEmailVerification(user);
+    await firebaseSignOut(auth);
     
     return { user, error: null };
   } catch (error) {
