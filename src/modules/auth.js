@@ -53,7 +53,7 @@ function mapAuthError(error) {
 /**
  * Sign up a new user
  */
-export async function signUp(email, password, username, pfpUrl = '/assets/pfp/1.png', gender = 'Others') {
+export async function signUp(email, password, username, pfpUrl = '/assets/pfp/placeholder.svg', gender = 'Others') {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;

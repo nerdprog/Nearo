@@ -12,8 +12,42 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
   // Place profile images in public/assets/pfp. Replace these placeholders with project avatars as needed.
   const pfpList = [
     '/assets/pfp/placeholder.svg',
-    ...Array.from({length: 10}, (_, i) => `/assets/pfp/avatar-${String(i + 1).padStart(2, '0')}.svg`)
+    ...Array.from({length: 10}, (_, i) => `/assets/pfp/avatar-${String(i + 1).padStart(2, '0')}.png`)
   ];
+
+  const genderColors = {
+    Male: '#3b82f6',
+    Female: '#ec4899',
+    Others: '#9ca3af'
+  };
+
+  const setPfpSelected = (img, isSelected) => {
+    img.classList.toggle('selected', isSelected);
+    img.style.borderColor = isSelected ? 'var(--accent)' : 'transparent';
+    img.style.opacity = isSelected ? '1' : '0.6';
+  };
+
+  const updatePfpSelection = () => {
+    container.querySelectorAll('.pfp-option').forEach(img => {
+      setPfpSelected(img, img.dataset.url === selectedPfp);
+    });
+  };
+
+  const setGenderSelected = (btn, isSelected) => {
+    const gender = btn.dataset.gender;
+    const color = genderColors[gender];
+    btn.style.borderColor = isSelected ? color : 'var(--border)';
+    const icon = btn.querySelector('.gender-icon');
+    const label = btn.querySelector('span');
+    if (icon) icon.style.stroke = isSelected ? color : 'var(--text-secondary)';
+    if (label) label.style.color = isSelected ? color : 'var(--text-secondary)';
+  };
+
+  const updateGenderSelection = () => {
+    container.querySelectorAll('.gender-btn').forEach(btn => {
+      setGenderSelected(btn, btn.dataset.gender === selectedGender);
+    });
+  };
 
 
   // Creative username placeholders
@@ -70,7 +104,7 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
         <form id="auth-form">
           <div class="input-group">
             <label class="input-label">Email</label>
-            <input type="email" id="email" class="input-field" placeholder="you@example.com" required />
+            <input type="email" id="email" class="input-field" placeholder="you@example.com" autocomplete="email" required />
           </div>
           
           ${mode === 'signup' ? `
@@ -83,7 +117,7 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
               <label class="input-label">Choose Avatar</label>
               <div class="pfp-grid flex gap-sm" style="flex-wrap: wrap; justify-content: center; margin-top: var(--spacing-sm);">
                 ${pfpList.map(pfp => `
-                  <img src="${pfp}" class="pfp-option ${selectedPfp === pfp ? 'selected' : ''}" data-url="${pfp}" style="width: 48px; height: 48px; border-radius: 50%; cursor: pointer; border: 2px solid ${selectedPfp === pfp ? 'var(--accent)' : 'transparent'}; opacity: ${selectedPfp === pfp ? '1' : '0.6'}; transition: all 0.2s;" />
+                  <img src="${pfp}" alt="Avatar option" class="pfp-option ${selectedPfp === pfp ? 'selected' : ''}" data-url="${pfp}" style="width: 48px; height: 48px; border-radius: 50%; cursor: pointer; border: 2px solid ${selectedPfp === pfp ? 'var(--accent)' : 'transparent'}; opacity: ${selectedPfp === pfp ? '1' : '0.6'}; transition: all 0.2s; object-fit: cover;" />
                 `).join('')}
               </div>
             </div>
@@ -109,7 +143,7 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
           
           <div class="input-group">
             <label class="input-label">Password</label>
-            <input type="password" id="password" class="input-field" placeholder="Password" required />
+            <input type="password" id="password" class="input-field" placeholder="Password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" required />
           </div>
           
           <button type="submit" id="btn-submit" class="btn btn-primary" style="margin-top: var(--spacing-md); width: 100%;">
@@ -137,13 +171,13 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
       container.querySelectorAll('.pfp-option').forEach(img => {
         img.addEventListener('click', (e) => {
           selectedPfp = e.target.dataset.url;
-          render(); // Re-render to update selected state
+          updatePfpSelection();
         });
       });
       container.querySelectorAll('.gender-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           selectedGender = e.currentTarget.dataset.gender;
-          render();
+          updateGenderSelection();
         });
       });
     }
