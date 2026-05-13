@@ -6,14 +6,11 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
   container.style.minHeight = '100vh';
 
   let mode = 'login'; // 'login' or 'signup'
-  let selectedPfp = '/assets/pfp/placeholder.svg';
+  let selectedPfp = '/assets/pfp/avatar-01.png';
   let selectedGender = '';
 
   // Place profile images in public/assets/pfp. Replace these placeholders with project avatars as needed.
-  const pfpList = [
-    '/assets/pfp/placeholder.svg',
-    ...Array.from({length: 10}, (_, i) => `/assets/pfp/avatar-${String(i + 1).padStart(2, '0')}.png`)
-  ];
+  const pfpList = Array.from({length: 18}, (_, i) => `/assets/pfp/avatar-${String(i + 1).padStart(2, '0')}.png`);
 
   const genderColors = {
     Male: '#3b82f6',
@@ -21,15 +18,10 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
     Others: '#9ca3af'
   };
 
-  const setPfpSelected = (img, isSelected) => {
-    img.classList.toggle('selected', isSelected);
-    img.style.borderColor = isSelected ? 'var(--accent)' : 'transparent';
-    img.style.opacity = isSelected ? '1' : '0.6';
-  };
-
   const updatePfpSelection = () => {
-    container.querySelectorAll('.pfp-option').forEach(img => {
-      setPfpSelected(img, img.dataset.url === selectedPfp);
+    container.querySelectorAll('.pfp-option-wrapper').forEach(wrapper => {
+      const img = wrapper.querySelector('.pfp-option');
+      img.classList.toggle('selected', wrapper.dataset.url === selectedPfp);
     });
   };
 
@@ -113,11 +105,67 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
               <input type="text" id="username" class="input-field placeholder-fade" placeholder="CoolName99" required />
             </div>
             
-            <div class="input-group">
-              <label class="input-label">Choose Avatar</label>
-              <div class="pfp-grid flex gap-sm" style="flex-wrap: wrap; justify-content: center; margin-top: var(--spacing-sm);">
+            <div class="input-group" style="margin-bottom: var(--spacing-lg);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--spacing-xs);">
+                <label class="input-label" style="margin-bottom: 0;">Choose Avatar</label>
+                <span class="mono" style="font-size: 0.7rem; color: var(--text-secondary); opacity: 0.7;">Scroll to see more &rarr;</span>
+              </div>
+              <div class="pfp-scroll-container" style="display: flex; gap: var(--spacing-md); overflow-x: auto; padding: var(--spacing-sm) 4px var(--spacing-md) 4px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 0 -4px;">
+                <style>
+                  .pfp-scroll-container::-webkit-scrollbar { display: none; }
+                  .pfp-option-wrapper {
+                    position: relative;
+                    flex-shrink: 0;
+                    scroll-snap-align: start;
+                    cursor: pointer;
+                    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                  }
+                  .pfp-option-wrapper:hover {
+                    transform: translateY(-4px) scale(1.05);
+                  }
+                  .pfp-option {
+                    width: 60px;
+                    height: 60px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    background: var(--bg-secondary);
+                    opacity: 0.5;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                  }
+                  .pfp-option.selected {
+                    opacity: 1;
+                    box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--accent);
+                  }
+                  .pfp-check {
+                    position: absolute;
+                    bottom: -2px;
+                    right: -2px;
+                    background: var(--accent);
+                    color: white;
+                    width: 22px;
+                    height: 22px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 2px solid var(--bg-card);
+                    opacity: 0;
+                    transform: scale(0.5);
+                    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                  }
+                  .pfp-option.selected + .pfp-check {
+                    opacity: 1;
+                    transform: scale(1);
+                  }
+                </style>
                 ${pfpList.map(pfp => `
-                  <img src="${pfp}" alt="Avatar option" class="pfp-option ${selectedPfp === pfp ? 'selected' : ''}" data-url="${pfp}" style="width: 48px; height: 48px; border-radius: 50%; cursor: pointer; border: 2px solid ${selectedPfp === pfp ? 'var(--accent)' : 'transparent'}; opacity: ${selectedPfp === pfp ? '1' : '0.6'}; transition: all 0.2s; object-fit: cover;" />
+                  <div class="pfp-option-wrapper" data-url="${pfp}">
+                    <img src="${pfp}" alt="Avatar option" class="pfp-option ${selectedPfp === pfp ? 'selected' : ''}" loading="lazy" />
+                    <div class="pfp-check">
+                      <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                  </div>
                 `).join('')}
               </div>
             </div>
@@ -168,9 +216,9 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
     container.querySelector('#tab-signup').addEventListener('click', () => { mode = 'signup'; render(); });
 
     if (mode === 'signup') {
-      container.querySelectorAll('.pfp-option').forEach(img => {
-        img.addEventListener('click', (e) => {
-          selectedPfp = e.target.dataset.url;
+      container.querySelectorAll('.pfp-option-wrapper').forEach(wrapper => {
+        wrapper.addEventListener('click', (e) => {
+          selectedPfp = e.currentTarget.dataset.url;
           updatePfpSelection();
         });
       });
