@@ -8,14 +8,14 @@ export function createInstructionsPage(onBack) {
       <button id="btn-back" class="btn-icon" title="Back">
         <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
       </button>
-      <h2 style="font-size: 1.5rem;">Neuro Guide</h2>
+      <h2 style="font-size: 1.5rem;">Nearo Guide</h2>
     </div>
 
     <div class="card flex-col gap-lg" style="margin-bottom: var(--spacing-xl);">
       <section>
         <h3 class="mono" style="font-size: 0.9rem; color: var(--accent); margin-bottom: var(--spacing-sm);">HOW IT WORKS</h3>
         <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-secondary);">
-          Neuro shows posts from your nearby 3km zone. Use the feed to read local posts, switch to Top to see the highest scoring posts, and use the plus button to create a post.
+          Nearo shows posts from your nearby 2km zone. Use the feed to read local posts, switch to Top to see the highest scoring posts, and use the plus button to create a post.
         </p>
       </section>
 

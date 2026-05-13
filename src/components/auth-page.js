@@ -91,7 +91,7 @@ export function createAuthPage(onSignIn, onSignUp, onGoogleSignIn) {
       </style>
       <div style="text-align: center; margin-bottom: var(--spacing-xl);">
         <svg viewBox="0 0 64 64" width="64" height="64" fill="none" style="margin-bottom: var(--spacing-md);"><rect width="64" height="64" rx="16" fill="var(--text-primary)"/><circle cx="32" cy="28" r="10" stroke="var(--bg-primary)" stroke-width="2.5" fill="none"/><circle cx="32" cy="28" r="3" fill="var(--accent)"/><path d="M20 48 C20 38 44 38 44 48" stroke="var(--bg-primary)" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
-        <h1 style="font-size: 2rem; margin-bottom: var(--spacing-xs);">NEURO</h1>
+        <h1 style="font-size: 2rem; margin-bottom: var(--spacing-xs);">NEARO</h1>
         <p class="mono" style="color: var(--text-secondary); font-size: 0.85rem;">Local. Anonymous. Ephemeral.</p>
       </div>
       
